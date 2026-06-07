@@ -5,123 +5,119 @@ import plotly.graph_objects as go
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import io
+import json
+import os
 
 st.set_page_config(page_title="VedicHoroscope Pro", page_icon="🌟", layout="wide")
 
-st.title("🌟 VedicHoroscope Pro")
-st.markdown("**Professional Vedic Astrology Analysis with Lal Kitab**")
+# Profiles
+PROFILES_FILE = "profiles.json"
 
-# Sidebar
+def load_profiles():
+    if os.path.exists(PROFILES_FILE):
+        try:
+            with open(PROFILES_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_profiles(profiles):
+    with open(PROFILES_FILE, "w") as f:
+        json.dump(profiles, f, indent=4)
+
+profiles = load_profiles()
+
+st.title("🌟 VedicHoroscope Pro")
+st.markdown("**Multi-Person Vedic Astrology App with Monthly Predictions**")
+
+# Sidebar - Profile Management
 with st.sidebar:
-    st.header("Birth Information")
-    name = st.text_input("Full Name", "Muralidhar Kini")
-    gender = st.selectbox("Gender", ["Male", "Female"])
+    st.header("👤 Profile Management")
+    action = st.radio("Action", ["Load Profile", "Create New"], horizontal=True)
+    
+    if action == "Load Profile" and profiles:
+        selected = st.selectbox("Select Profile", list(profiles.keys()))
+        if st.button("Load Profile"):
+            st.session_state.current = profiles[selected]
+            st.rerun()
+    
+    st.divider()
+    st.header("Birth Details")
+    
+    current = st.session_state.get("current", {})
+    
+    name = st.text_input("Full Name", value=current.get("name", "New Person"))
+    gender = st.selectbox("Gender", ["Male", "Female"], index=0)
+    
     col1, col2 = st.columns(2)
     with col1:
-        dob = st.date_input("Date of Birth", datetime(1978, 4, 14))
+        dob = st.date_input("Date of Birth", datetime.strptime(current.get("dob", "1990-01-01"), "%Y-%m-%d").date() if current.get("dob") else datetime(1978,4,14).date())
     with col2:
-        tob = st.time_input("Time of Birth", datetime.strptime("17:00", "%H:%M").time())
+        tob = st.time_input("Time of Birth", datetime.strptime(current.get("tob", "17:00"), "%H:%M").time() if current.get("tob") else datetime.strptime("17:00", "%H:%M").time())
     
-    place = st.text_input("Birth Place", "Udupi, Karnataka, India")
-    lat = st.number_input("Latitude", value=13.3409, format="%.4f")
-    lon = st.number_input("Longitude", value=74.7421, format="%.4f")
+    place = st.text_input("Birth Place", value=current.get("place", "Udupi, Karnataka, India"))
     
+    if st.button("💾 Save Profile"):
+        profiles[name] = {"name": name, "gender": gender, "dob": str(dob), "tob": str(tob), "place": place}
+        save_profiles(profiles)
+        st.success(f"✅ Profile '{name}' Saved!")
+
+    st.divider()
     chart_style = st.radio("Chart Style", ["North Indian", "South Indian"])
     selected_year = st.number_input("Annual Horoscope Year", 2025, 2050, 2026)
 
+# Generate Button
 if st.button("Generate Complete Horoscope", type="primary", use_container_width=True):
-    with st.spinner("Generating Detailed Vedic Analysis..."):
+    with st.spinner("Analyzing Birth Chart..."):
+        # Basic Dynamic Logic
+        year = dob.year
+        lagna = "Gemini" if (month := dob.month) in [4,5] else "Cancer" if month in [6,7] else "Leo"  # Very basic simulation
         
-        # Simulated Vedic Data based on your chart
-        lagna = "Gemini"
-        moon_sign = "Gemini"
-        nakshatra = "Ardra"
-        current_dasha = "Mercury Mahadasha (2019 - 2036)"
+        st.success(f"Horoscope Generated for **{name}** (Born {dob})")
         
-        planets = {
-            "Planet": ["Lagna", "Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"],
-            "Sign": ["Gemini", "Aries", "Gemini", "Cancer (Deb)", "Pisces (Deb)", "Cancer", "Taurus", "Leo", "Virgo", "Pisces"],
-            "House": [1, 11, 1, 2, 10, 2, 12, 3, 4, 10],
-            "Status": ["", "Exalted", "", "Debilitated", "Debilitated", "", "", "", "", ""]
-        }
+        tabs = st.tabs(["Natal Chart", "Annual Forecast", "Gemstones", "Remedies", "Full Analysis"])
         
-        df_planets = pd.DataFrame(planets)
+        with tabs[0]:
+            st.subheader(f"Natal Chart — {name}")
+            st.info(f"**Lagna**: {lagna} | **Moon Sign**: Simulated based on input")
+            st.caption("Note: For fully accurate planetary positions, professional software is recommended.")
         
-        # Tabs
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Natal Chart", "Annual Forecast", "Gemstones", "Remedies", "Full Analysis"])
-        
-        with tab1:
-            st.subheader(f"Natal Chart - {name}")
-            col1, col2 = st.columns([1, 1])
+        with tabs[1]:
+            st.subheader(f"📅 Annual Horoscope — {selected_year}")
+            st.write("**General Prediction**: A year of mixed results. Focus on communication, learning, and steady effort.")
             
-            with col1:
-                if chart_style == "North Indian":
-                    st.info("🟦 North Indian Diamond Style Chart")
-                else:
-                    st.info("⬛ South Indian Square Style Chart")
-                
-                fig = go.Figure()
-                fig.add_annotation(text=f"Lagna: {lagna}\nMoon: {moon_sign}\nNakshatra: {nakshatra}", 
-                                 showarrow=False, font_size=18)
-                st.plotly_chart(fig, use_container_width=True)
-            
-            with col2:
-                st.subheader("Planetary Positions")
-                st.dataframe(df_planets, use_container_width=True)
-                st.write(f"**Current Dasha**: {current_dasha}")
+            st.subheader("Month-wise Predictions (General)")
+            # Generic but structured
+            for month in ["January","April","July","October"]:
+                with st.expander(month):
+                    st.write("**Career**: Opportunities through networking")
+                    st.write("**Finance**: Moderate growth")
+                    st.write("**Health**: Manage stress")
+                    st.write("**Family**: Generally supportive")
         
-        with tab2:
-            st.subheader(f"Annual Horoscope - {selected_year}")
-            st.success("**Overall Theme**: Transformative year with focus on career growth and financial consolidation.")
-            st.write("**Career**: Opportunities in communication, tech, teaching or business.")
-            st.write("**Finance**: Gradual improvement. Avoid speculation.")
-            st.write("**Health**: Manage stress and nervous system.")
-            st.write("**Best Months**: April to September")
+        with tabs[2]:
+            st.subheader("💎 Gemstone Recommendations")
+            st.info("**Common Recommendation**: Emerald or Ruby (consult local astrologer)")
         
-        with tab3:
-            st.subheader("💎 Gemstone Analysis")
-            st.success("**Primary Recommendation**: Emerald (Mercury) - 5-7 carats")
-            st.write("**When to Wear**: Wednesday morning, 5-7 AM, after bathing.")
-            st.write("**Finger**: Little finger of right hand (for males)")
-            st.write("**Metal**: Silver or Gold")
-            st.info("**Secondary**: Red Coral for Mars (after proper consultation)")
-        
-        with tab4:
+        with tabs[3]:
             st.subheader("🛠️ Remedies")
-            st.write("**Vedic Remedies**")
-            st.write("- Chant Gayatri Mantra 108 times daily")
-            st.write("- Worship Lord Vishnu on Wednesdays")
-            st.write("- Donate green items on Wednesday")
-            
-            st.write("**Lal Kitab Remedies**")
-            st.write("- Keep a silver elephant in the North-East corner")
-            st.write("- Feed green fodder to cows")
-            st.write("- Avoid wearing green clothes on Saturday")
+            st.write("- Chant Gayatri Mantra daily")
+            st.write("- Perform remedies as per your specific chart")
         
-        with tab5:
-            st.subheader("Comprehensive Predictive Analysis")
-            st.markdown("""
-            **Strengths**: Gajakesari Yoga, Exalted Sun in 11th house  
-            **Challenges**: Debilitated Mercury & Mars, Ketu in 10th house  
-            **Career**: Best suited for teaching, consulting, tech, entrepreneurship  
-            **Finance**: Steady growth after consistent effort  
-            """)
-        
-        # PDF Download
-        buffer = io.BytesIO()
-        c = canvas.Canvas(buffer, pagesize=letter)
-        c.drawString(100, 750, f"Vedic Horoscope Report - {name}")
-        c.drawString(100, 730, f"Date of Birth: {dob} {tob}")
-        c.drawString(100, 710, f"Lagna: {lagna} | Nakshatra: {nakshatra}")
-        c.drawString(100, 690, f"Analysis Year: {selected_year}")
-        c.save()
-        
-        buffer.seek(0)
-        st.download_button(
-            label="📥 Download Full PDF Report",
-            data=buffer,
-            file_name=f"{name.replace(' ', '_')}_Horoscope.pdf",
-            mime="application/pdf"
-        )
+        with tabs[4]:
+            st.subheader("Important Note")
+            st.warning("This app currently uses **simulated / general** predictions. For highly accurate Vedic calculations (planetary degrees, exact dasha, etc.), we need a proper astrology library.")
 
-st.caption("VedicHoroscope Pro • Built with ❤️ by Grok • For Entertainment & Educational Purposes Only")
+# PDF Download (Basic)
+        if st.button("📥 Download PDF Report"):
+            buffer = io.BytesIO()
+            c = canvas.Canvas(buffer, pagesize=letter)
+            c.drawString(100, 750, f"Horoscope Report - {name}")
+            c.drawString(100, 720, f"DOB: {dob} | Place: {place}")
+            c.drawString(100, 690, f"Year: {selected_year}")
+            c.save()
+            buffer.seek(0)
+            st.download_button("Download PDF", buffer, f"{name}_Horoscope.pdf", "application/pdf")
+
+st.caption("VedicHoroscope Pro • Multi-Person Support")
