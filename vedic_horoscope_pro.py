@@ -6,7 +6,7 @@ import json
 st.set_page_config(page_title="VedicHoroscope Pro", page_icon="🌟", layout="wide")
 
 CLIENT_ID = "8911e04f-6d6f-4756-8025-100ae826ae6e"
-CLIENT_SECRET = "azJ5UWSTyAV61FRikXifGKF15e9qHPrPuCwuq07M"
+CLIENT_SECRET = "yM7M3BTjO16l51l8j2fg8AZnC2Q2lHOVMAmzPXMt"
 
 st.title("🌟 VedicHoroscope Pro")
 st.markdown("**ProKerala API • Real Vedic Horoscope**")
